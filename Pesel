@@ -2,7 +2,7 @@ import random
 import pandas as pd
 
 class Person:
-    def __init__(self, name, surname, sex, dob, pesel_number):
+    def __init__(self, name, surname, sex, dob, pesel_number=None):
         self.name = name
         self.surname = surname
         self.sex = sex
@@ -11,8 +11,9 @@ class Person:
 
 
 class Pesel:
-    def __init__(self, person):
+    def __init__(self, person, db_filepath):
         self.person = person
+        self.db_filepath = db_filepath
 
     def generate(self):
         # Extract date of birth components
@@ -59,26 +60,44 @@ class Pesel:
         pesel = pesel_without_check_digit + str(check_digit)
 
         return pesel
+    
+    def check_pesel_exists(self, pesel):
+      """
+      Checks if a PESEL number already exists in the database.
 
-     def check_pesel_exists(self, pesel):
+      Args:
+          pesel: The PESEL number to check.
+
+      Returns:
+          True if the PESEL exists in the database, False otherwise.
+      """
       try:
-        df = pd.read_csv(self.db_filepath) # Assuming your DB is a CSV file. Adapt as needed for other formats.
-        return pesel in df['pesel'].values # Assuming 'pesel' is the column name in your DB
+        df = pd.read_csv(self.db_filepath)
+        return pesel in df['pesel'].values
       except FileNotFoundError:
         print(f"Error: Database file not found at {self.db_filepath}")
-        return False # or raise the exception if preferred
+        return False
       except KeyError:
         print("Error: 'pesel' column not found in the database.")
         return False
       except Exception as e:
         print(f"An error occurred: {e}")
         return False
+
     def assign_unique_pesel(self):
+        """
+        Generates and assigns a unique PESEL number to the person.
+        """
         pesel = self.generate()
         while self.check_pesel_exists(pesel):
             pesel = self.generate()
         self.person.pesel_number = pesel
+
     def add_to_database(self):
+        """
+        Adds the person's data (including the generated PESEL) to the database.
+        Creates the database file if it doesn't exist.
+        """
         try:
             df = pd.read_csv(self.db_filepath)
         except FileNotFoundError:
@@ -88,10 +107,9 @@ class Pesel:
             'name': self.person.name,
             'surname': self.person.surname,
             'sex': self.person.sex,
-            'dob': self.person.dob,  # Store dob as is, assuming it's already in a suitable format
+            'dob': str(self.person.dob),  # Convert dob to string for CSV storage
             'pesel': self.person.pesel_number
         }
 
         df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
         df.to_csv(self.db_filepath, index=False)
-    
