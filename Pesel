@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 
 class Person:
     def __init__(self, name, surname, sex, dob, pesel_number):
@@ -58,3 +59,18 @@ class Pesel:
         pesel = pesel_without_check_digit + str(check_digit)
 
         return pesel
+
+     def check_pesel_exists(self, pesel):
+      try:
+        df = pd.read_csv(self.db_filepath) # Assuming your DB is a CSV file. Adapt as needed for other formats.
+        return pesel in df['pesel'].values # Assuming 'pesel' is the column name in your DB
+      except FileNotFoundError:
+        print(f"Error: Database file not found at {self.db_filepath}")
+        return False # or raise the exception if preferred
+      except KeyError:
+        print("Error: 'pesel' column not found in the database.")
+        return False
+      except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
+    
