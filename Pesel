@@ -78,4 +78,20 @@ class Pesel:
         while self.check_pesel_exists(pesel):
             pesel = self.generate()
         self.person.pesel_number = pesel
+    def add_to_database(self):
+        try:
+            df = pd.read_csv(self.db_filepath)
+        except FileNotFoundError:
+            df = pd.DataFrame(columns=['name', 'surname', 'sex', 'dob', 'pesel'])
+
+        new_data = {
+            'name': self.person.name,
+            'surname': self.person.surname,
+            'sex': self.person.sex,
+            'dob': self.person.dob,  # Store dob as is, assuming it's already in a suitable format
+            'pesel': self.person.pesel_number
+        }
+
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        df.to_csv(self.db_filepath, index=False)
     
