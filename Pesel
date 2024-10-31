@@ -73,4 +73,9 @@ class Pesel:
       except Exception as e:
         print(f"An error occurred: {e}")
         return False
+    def assign_unique_pesel(self):
+        pesel = self.generate()
+        while self.check_pesel_exists(pesel):
+            pesel = self.generate()
+        self.person.pesel_number = pesel
     
