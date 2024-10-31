@@ -119,29 +119,23 @@ class Pesel:
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def search_db(self, search_term, column='pesel'):
-        """Searches the database for a given search term in a specified column.
+    def search_database(self, search_term, column="pesel_number"):
+        """
+        Searches the SQLite database for a specific term in a given column.
 
         Args:
             search_term: The term to search for.
-            column: The column to search in (default is 'pesel').
+            column: The column to search in (default is "pesel_number").
 
         Returns:
-            A pandas DataFrame containing the matching rows, or None if the file is not found, 
-            the column does not exist, or an error occurs.
+            A pandas DataFrame containing the search results, or None if an error occurs.
         """
         try:
-            df = pd.read_csv(self.db_filepath)
-            if column not in df.columns:
-                print(f"Error: Column '{column}' not found in the database.")
-                return None
-
-            results = df[df[column].astype(str).str.contains(str(search_term), case=False, na=False)]
-            return results
-
-        except FileNotFoundError:
-            print(f"Error: Database file not found at {self.db_filepath}")
-            return None
+            conn = sqlite3.connect(self.db_filepath)
+            query = f"SELECT * FROM persons WHERE {column} LIKE ?"  # Use parameterized query to prevent SQL injection
+            df = pd.read_sql_query(query, conn, params=[f"%{search_term}%"])  # Use % for wildcard search
+            conn.close()
+            return df
         except Exception as e:
-            print(f"An error occurred during the search: {e}")
+            print(f"Error searching the database: {e}")
             return None
