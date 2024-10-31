@@ -113,3 +113,29 @@ class Pesel:
 
         df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
         df.to_csv(self.db_filepath, index=False)
+    def search_db(self, search_term, column='pesel'):
+        """Searches the database for a given search term in a specified column.
+
+        Args:
+            search_term: The term to search for.
+            column: The column to search in (default is 'pesel').
+
+        Returns:
+            A pandas DataFrame containing the matching rows, or None if the file is not found, 
+            the column does not exist, or an error occurs.
+        """
+        try:
+            df = pd.read_csv(self.db_filepath)
+            if column not in df.columns:
+                print(f"Error: Column '{column}' not found in the database.")
+                return None
+
+            results = df[df[column].astype(str).str.contains(str(search_term), case=False, na=False)]
+            return results
+
+        except FileNotFoundError:
+            print(f"Error: Database file not found at {self.db_filepath}")
+            return None
+        except Exception as e:
+            print(f"An error occurred during the search: {e}")
+            return None
