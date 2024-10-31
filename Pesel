@@ -61,29 +61,23 @@ class Pesel:
 
         return pesel
     
-    def check_pesel_exists(self, pesel):
+   def check_pesel_exists(self, db_path):
       """
-      Checks if a PESEL number already exists in the database.
-
-      Args:
-          pesel: The PESEL number to check.
-
-      Returns:
-          True if the PESEL exists in the database, False otherwise.
+      Checks if the generated PESEL already exists in the SQL database.
       """
       try:
-        df = pd.read_csv(self.db_filepath)
-        return pesel in df['pesel'].values
-      except FileNotFoundError:
-        print(f"Error: Database file not found at {self.db_filepath}")
-        return False
-      except KeyError:
-        print("Error: 'pesel' column not found in the database.")
-        return False
-      except Exception as e:
-        print(f"An error occurred: {e}")
-        return False
+          # Connect to the SQLite database
+          conn = sqlite3.connect(db_path)
+          # Read the table into a pandas DataFrame
+          df = pd.read_sql_query("SELECT pesel_number FROM persons", conn) # Replace 'persons' with your actual table name
+          conn.close()
 
+          # Check if the generated PESEL exists in the DataFrame
+          pesel = self.generate()
+          return pesel in df['pesel_number'].values
+      except Exception as e:
+          print(f"Error checking PESEL in database: {e}")
+          return False # Or handle the error as appropriate for your application
     def assign_unique_pesel(self):
         """
         Generates and assigns a unique PESEL number to the person.
@@ -94,25 +88,37 @@ class Pesel:
         self.person.pesel_number = pesel
 
     def add_to_database(self):
-        """
-        Adds the person's data (including the generated PESEL) to the database.
-        Creates the database file if it doesn't exist.
-        """
         try:
-            df = pd.read_csv(self.db_filepath)
-        except FileNotFoundError:
-            df = pd.DataFrame(columns=['name', 'surname', 'sex', 'dob', 'pesel'])
+            conn = sqlite3.connect(self.db_filepath)
+            cursor = conn.cursor()
 
-        new_data = {
-            'name': self.person.name,
-            'surname': self.person.surname,
-            'sex': self.person.sex,
-            'dob': str(self.person.dob),  # Convert dob to string for CSV storage
-            'pesel': self.person.pesel_number
-        }
+            # Check if the table exists, create it if it doesn't
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS persons (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    surname TEXT NOT NULL,
+                    sex TEXT NOT NULL,
+                    dob DATE NOT NULL,
+                    pesel_number TEXT UNIQUE NOT NULL
+                )
+            ''')
 
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-        df.to_csv(self.db_filepath, index=False)
+            # Insert the person's data into the table
+            cursor.execute('''
+                INSERT INTO persons (name, surname, sex, dob, pesel_number)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (self.person.name, self.person.surname, self.person.sex, self.person.dob, self.person.pesel_number))
+
+            conn.commit()
+            conn.close()
+            print(f"Person with PESEL {self.person.pesel_number} added to the database.")
+
+        except sqlite3.IntegrityError:
+            print(f"Error: PESEL {self.person.pesel_number} already exists in the database.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
     def search_db(self, search_term, column='pesel'):
         """Searches the database for a given search term in a specified column.
 
